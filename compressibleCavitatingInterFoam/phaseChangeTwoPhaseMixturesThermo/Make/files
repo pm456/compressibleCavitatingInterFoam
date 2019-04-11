@@ -1,0 +1,5 @@
+phaseChangeTwoPhaseMixtureThermo/phaseChangeTwoPhaseMixtureThermo.C
+phaseChangeTwoPhaseMixtureThermo/newPhaseChangeTwoPhaseMixtureThermo.C
+SchnerrSauer/SchnerrSauer.C
+
+LIB = $(FOAM_LIBBIN)/libphaseChangeTwoPhaseMixturesThermo
