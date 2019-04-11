@@ -1,0 +1,52 @@
+\begin{thebibliography}{1}
+
+\bibitem{bice15}
+B.~Bi{\c c}er and A.~Sou.
+\newblock Application of the improved cavitation model to turbulent cavitating
+  flow in fuel injector nozzle.
+\newblock {\em Applied Mathematical Modelling}, 40:4712--4726, 2015.
+
+\bibitem{yu18}
+P.A. Brandner J. Li~b H.~Yu, L.~Goldsworthy and V.~Garaniya.
+\newblock Modelling thermal effects in cavitating high-pressure diesel sprays
+  using an improved compressible multiphase approach.
+\newblock {\em Fuel}, 2018.
+
+\bibitem{jasa96}
+H.~Jasak.
+\newblock {\em Error Analysis and Estimation for the Finite Volume Method with
+  Applications to Fluid Flows}.
+\newblock PhD thesis, Imperial College of Science, Technology and Medicine,
+  1996.
+
+\bibitem{ples77}
+M.~S. Plesset and A.~Prosperetti.
+\newblock Bubble dynamics and cavitation.
+\newblock {\em Ann. Rev. Fluid Mech.}, pages 145--185, 1977.
+
+\bibitem{rayl17}
+L.~Rayleigh.
+\newblock On the pressure developed in a liquid during the collapse of a
+  spherical cavity.
+\newblock {\em O.M., F. R. S.}, 1917.
+
+\bibitem{mill13}
+D.~A. Boger E. G.~Paterson S.~T.~Miller, H.~Jasak and A.~Nedungadi.
+\newblock A pressure-based, compressible, two-phase flow finite volume method
+  for underwater explosions.
+\newblock {\em Computers and Fluids}, 87:132--143, 2013.
+
+\bibitem{saue00}
+J.~Sauer and G.~H. Schnerr.
+\newblock Unsteady cavitating flow - a new cavitation method based on a
+  modified front capturing method and bubble dynamics.
+\newblock In {\em 2000 ASME Fluids Engineering Summer Conference}, June 2000.
+
+\bibitem{ubbi97}
+O.~Ubbink.
+\newblock {\em Numerical prediction of two fluid systems with sharp
+  interfaces}.
+\newblock PhD thesis, Imperial College of Science, Technology and Medicine,
+  1997.
+
+\end{thebibliography}

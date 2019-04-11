@@ -1,0 +1,129 @@
+\documentclass{article}
+\usepackage{graphicx}
+
+\begin{document}
+
+%---------------------------- Title ------------------------------------
+\include{title}
+
+\chapter*{Introduction}
+To solve multiphase problems with phase change, such as evaporating flows in flash boiling, the standard OpenFOAM solver compressibleInterFoam has been previously expanded to include phase change between two phases specifically for flash boiling. The multiphase solver compressibleInterFoam in OpenFOAM v5.0 is a compressible Volume of Fluid (VoF) based solver that uses interface compression terms to avoid numerical diffusion of the interface. An alternative phase change model is implemented into compressibleInterFoam with the aim of combining the two phase methodologies together.  
+
+\chapter{Governing Equations}
+
+\section{Volume Fraction Transport - alpha Equation}
+To consider the volume fraction phase transport with compressibility the change in density needs to be accounted for: $\rho = \rho_0 + {\psi}p$, which leads to the formulation for a single phase:
+
+\begin{equation}
+\begin{split}
+\frac{\partial \alpha_1}{\partial t} + \nabla\cdotp (\alpha_1 \bm{u}) =& \alpha_1\left[\alpha_2\left(\frac{\psi_2}{\rho_2}-\frac{\psi_1}{\rho_1}\right)\matD{p}  + \alpha_2\left(\frac{p}{\rho_2}\matD{\psi_2}-\frac{p}{\rho_1}\matD{\psi_1}\right) + \nabla\cdotp\bm{u}\right] \\
+& + \alpha_1\frac{\mathrm{Sp}_1}{\rho_1}\left(1+\alpha_1 \left(\frac{\rho_1-\rho_2}{\rho_2}\right)\right)
++ \frac{\mathrm{Su_1}}{\rho_1}\left(1+\alpha_1 \left(\frac{\rho_1-\rho_2}{\rho_2}\right)\right)
+\end{split}
+\end{equation}
+
+An artifical compression term $\nable\cdot (\alpha_1\alpha_2(U_1 - U_2))$ is added to preserve the sharpness of the liquid-gas interface.
+
+\begin{equation}
+\begin{split}
+\frac{\partial \alpha_1}{\partial t} + \nabla\cdotp (\alpha_1 \bm{u}) \nable\cdot (\alpha_1\alpha_2(U_1 - U_2)) =& \alpha_1\left[\alpha_2\left(\frac{\psi_2}{\rho_2}-\frac{\psi_1}{\rho_1}\right)\matD{p}  + \alpha_2\left(\frac{p}{\rho_2}\matD{\psi_2}-\frac{p}{\rho_1}\matD{\psi_1}\right) + \nabla\cdotp\bm{u}\right] \\
+& + \alpha_1\frac{\mathrm{Sp}_1}{\rho_1}\left(1+\alpha_1 \left(\frac{\rho_1-\rho_2}{\rho_2}\right)\right)
++ \frac{\mathrm{Su_1}}{\rho_1}\left(1+\alpha_1 \left(\frac{\rho_1-\rho_2}{\rho_2}\right)\right)
+\end{split}
+\end{equation}
+
+
+
+\subsection{Implementation in OpenFOAM}
+To guarantee the boundedness of the volume fraction between 0 and 1, the multi-dimensionsal limiter for explicit solution (MULES) solver is used. This solver is inherently explicit and allows only for a convective transport. In the OpenFOAM version 5.0, the option exist to solve first the equation implicitly and then to correct the solution with the explicit MULES solver. This is then called MULESCorr and is already implemented in the alphaEqn of the VoF directory. 
+
+MULES solves following equation,
+\begin{align}
+\frac{\partial \rho \psi}{\partial t} + \nabla\cdotp(\rho \psi \bm{u}) &= S_u + S_p \psi\\
+\frac{\rho \psi - \rho^0 \psi^0}{\Delta t} + \int_A (\rho \psi \bm{u}) ~\mathrm{dA}&= S_u + S_p \psi\\
+\Rightarrow \psi &= \frac{\frac{\rho^0\psi^0}{\Delta t} - \int_A (\rho \psi \bm{u}) ~\mathrm{dA} + S_u}{\frac{\rho}{\Delta t} - S_p}
+\end{align}
+The $S_p$ and $S_u$ terms represent source terms, with the OpenFOAM notation for linearizing a source term $\Gamma = Su + \phi Sp$. 
+The question arises now how to treat the source terms on the RHS. To guarantee diagonal dominance sinks should be treated implicitly and sources explicit. 
+The divergence of the velocity is for cases of evaporating liquid positive and is therefore treated explicitly. For the compressibility terms a cell to cell evaluation is made. This leaves the source term of the evaporation $\dot{m}_1$. Assuming this source term is linearized as well with $\dot{S_1} = \mathrm{Su} + \alpha \mathrm{Sp}$, and the assumption that Sp is negative, the equation can be rearranged in implicit and explicit treatment,
+\begin{equation}
+\begin{split}
+\frac{\partial \alpha_1}{\partial t} + \nabla\cdotp (\alpha_1 \bm{u}) =& \alpha_1\left[\alpha_2\left(\frac{\psi_2}{\rho_2}-\frac{\psi_1}{\rho_1}\right)\matD{p}  + \alpha_2\left(\frac{p}{\rho_2}\matD{\psi_2}-\frac{p}{\rho_1}\matD{\psi_1}\right) + \nabla\cdotp\bm{u}\right] \\
+& + \alpha_1\frac{\mathrm{Sp}_1}{\rho_1}\left(1+\alpha_1 \left(\frac{\rho_1-\rho_2}{\rho_2}\right)\right)
++ \frac{\mathrm{Su_1}}{\rho_1}\left(1+\alpha_1 \left(\frac{\rho_1-\rho_2}{\rho_2}\right)\right)
+\end{split}
+\end{equation}
+
+The compressibility and temperature effects,
+\begin{equation*}
+dgdt = \alpha_1\left[\alpha_2\left(\frac{\psi_2}{\rho_2}-\frac{\psi_1}{\rho_1}\right)\matD{p}  + \alpha_2\left(\frac{p}{\rho_2}\matD{\psi_2}-\frac{p}{\rho_1}\matD{\psi_1}\right)\right]
+\end{equation*}
+
+\section{Pressure Equation}
+
+The pressure equation is linked with the semi-descritised momentum equation and the complete pressure equation implemented in OpenFOAM is as follows:
+
+\begin{equation}
+\begin{split}
+	\frac{\alpha_1}{\rho_1}[\psi_1\frac{{\partial}p}{{\partial}t} + U \cdot(\rho_1)] + \frac{\alpha_2}{\rho_2}[\psi_2\frac{{\partial}p}{{\partial}t} + U \cdot(\rho_2)]: pEqnComp \\
+	+ \\
+	\nabla(\frac{H}{a_p}) - \nabla(\frac{1}{a_p}{\nabla}p) - \dot{m}(\frac{1}{\rho_1}-\frac{1}{\rho_2}): pEgnIncomp \\
+	= 0
+\end{split}
+\end{equation}
+
+\section{Energy Equation}
+
+\begin{equation}
+\begin{split}
+\rho\matD{T} + \left(\frac{\alpha_1}{c_{p,1}} + \frac{\alpha_2}{c_{p,2}}\right)\left(\rho \matD{K}-\parDeriv{p}{t}\right) - \left(\alpha_1\nabla\cdotp(\alpha_\mathrm{Eff,1}\nabla T) + \alpha_2\nabla\cdotp(\alpha_\mathrm{Eff,2}\nabla T)\right)= \\
+ \dot{m}_1 h_2 \frac{\alpha_1}{c_{p,1}} +  \dot{m}_2 h_2 \frac{\alpha_2}{c_{p,2}} -\frac{\rho}{\rho_1 c_{p,1}}\dot{m}_1 h_1 \label{eq:TEqn}
+\end{split}
+\end{equation}
+$\alpha_\mathrm{Eff}$ is the turbulent thermal diffusivity defined as  $\alpha_\mathrm{Eff}= \frac{k}{c_p} + \frac{k_t}{c_p}$.
+
+In analogy to the HRM model the enthalpy of the vapor can be set to saturation conditions. However, a more consistent approach with the single temperature assumption would be to set the enthalpy of phase 2 to the value at the current pressure and temperature, thus $h_2 = f(p,T)$.
+
+\chapter{Phase Change Models}
+The term of the phase change of the volume fraction $\dot{m}_1$ is modeled in the phase change class which is dynamically selected at run time. Previously, only the homogeneous relaxation model (HRM) from \citet{Zapolski1995} is implemented by Jans. The Schnerr-Sauer mass transfer cavitation model have been implemented into the code. The model, based on the Rayleigh-Plesset equation for bubble dynamics, relates the the expansion of a nucliated bubble radius with the pressure field gradient. The phase change is defined as a mass transfer source term.
+
+The well known Rayleigh-Plesset equation is as follows:
+
+\begin{equation}
+	\frac{d^2R_b}{dt^2} + \frac{3}{2}(\frac{dR_b}{dt})^2 = \frac{P_{sat}-P}{\rho_1}
+\end{equation}
+
+which can be simplified to:
+
+\begin{equation}
+	\frac{dR_b}{dt} = -sign(P - P_{sat})\sqrt{\frac{3}{2}\frac{|P-P{sat}|}{\rho_{liq}}}
+\end{equation}
+
+Schnerr and Sauer related the vapour volume fraction with the number of bubbles within a volume of liquid using the following expression:
+
+\begin{equation}
+	\alpha_1 = \frac{n\frac{4}{3}\pi{R^3}_b}{1 + n\frac{4}{3}\pi{R^3}_b}
+\end{equation}
+
+The net mass source can be defined as:
+
+\begin{equation}
+	R = \frac{3\alpha(1-\alpha)}{R_b}\frac{\rho_1\rho_2}{\rho_m}\frac{dR_b}{dt}
+\end{equation}
+
+Bubble radius is assumed to be spherical and that the growth is an inertia controlled process, the simplified Rayleigh-Plesset equation can be used to account for the evolution rate of the bubble radius as follows in combination with the net mass source:
+
+\begin{equation}
+	P < P_{sat}(T) \to \dot{m}_{-} = \frac{3\alpha(1-\alpha)}{R_b}\frac{\rho_1\rho_2}{\rho_m}\sqrt{\frac{\frac{3}{2}(P_{sat}(T)-P)}{\rho_{liq}}
+\end{equation}
+
+\begin{equation}
+	P > P_{sat}(T) \to \dot{m}_{+} = \frac{3\alpha(1-\alpha)}{R_b}\frac{\rho_1\rho_2}{\rho_m}\sqrt{\frac{\frac{3}{2}(P-P_{sat}(T))}{\rho_{liq}}
+\end{equation}
+
+%-------------------------- Bibliography -------------------------------
+\cleardoublepage
+\newpage
+  \bibliographystyle{plainnat}
+  \bibliography{/home/itvjg/Documents/Reports/literature} 
+\end{document}

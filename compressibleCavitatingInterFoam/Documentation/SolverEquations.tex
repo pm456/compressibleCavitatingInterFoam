@@ -1,0 +1,170 @@
+\documentclass{article}
+\usepackage{graphicx}
+\usepackage{amsmath}
+
+\begin{document}
+
+
+\include{title}
+
+\section{Introduction}
+To solve multiphase problems with phase change, such as evaporating flows in flash boiling, the standard OpenFOAM solver compressibleInterFoam has been previously expanded to include phase change between two phases specifically for flash boiling. The multiphase solver compressibleInterFoam in OpenFOAM v5.0 is a compressible Volume of Fluid (VoF) based solver that uses interface compression terms to avoid numerical diffusion of the interface. An alternative phase change model is implemented into compressibleInterFoam with the aim of combining the two phase methodologies together.  
+
+\section{Governing Equations}
+
+\subsection{Volume Fraction Transport}
+To consider the volume fraction phase transport with compressibility the change in density needs to be accounted for: $\rho = \rho_0 + {\psi}p$, which leads to the formulation for a single phase:
+
+\begin{equation}
+\begin{split}
+\frac{\partial \alpha_l}{\partial t} + \nabla\cdot p (\alpha_l \bm{u}) = \alpha_l{\left[}\alpha_v\left(\frac{\psi_v}{\rho_v}-\frac{\psi{_l}}{\rho{_l}}\right)\matD{p}  + \alpha_v\left(\frac{p}{\rho_v}\matD{\psi_v}-\frac{p}{\rho_l}\matD{\psi_l}\right) + \nabla\cdotp\bm{u}\right] \\
++ \alpha_l\frac{\mathrm{Sp}_l}{\rho_l}\left(l+\alpha_l \left(\frac{\rho_l-\rho_v}{\rho_v}\right)\right)
++ \frac{\mathrm{Su_l}}{\rho_l}\left(1+\alpha_l \left(\frac{\rho_l-\rho_v}{\rho_v}\right)\right)
+\end{split}
+\end{equation}
+
+An artifical compression term $\nabla\cdot (\alpha_l\alpha_v(U_l - U_v))$ is added to preserve the sharpness of the liquid-gas interface.
+
+\begin{equation}
+\begin{split}
+\frac{\partial \alpha_l}{\partial t} + \nabla\cdotp (\alpha_l \bm{u}) + \nabla\cdot (\alpha_l\alpha_v(U_l - U_v)) \\
+= \alpha_l\left[\alpha_v\left(\frac{\psi_v}{\rho_v}-\frac{\psi_l}{\rho_l}\right)\matD{p}  + \alpha_v\left(\frac{p}{\rho_v}\matD{\psi_v}-\frac{p}{\rho_l}\matD{\psi_l}\right) + \nabla\cdotp\bm{u}\right] \\
++ \alpha_l\frac{\mathrm{Sp}}{\rho_l}\left(1+\alpha_l \left(\frac{\rho_l-\rho_v}{\rho_v}\right)\right)
++ \frac{\mathrm{Su}}{\rho_l}\left(1+\alpha_l \left(\frac{\rho_l-\rho_v}{\rho_v}\right)\right)
+\end{split}
+\end{equation}
+
+For the compressibility terms a cell to cell evaluation is made. This leaves the source term of the evaporation $\dot{m}_l$. Assuming this source term is linearized as well with $\dot{S_l} = \mathrm{Su} + \alpha \mathrm{Sp}$, and the assumption that Sp is negative, the equation can be rearranged in implicit and explicit treatment.
+
+\begin{equation}
+\begin{split}
+\frac{\partial \alpha_l}{\partial t} + \nabla\cdotp (\alpha_l \bm{u}) =& \alpha_l\left[\alpha_v\left(\frac{\psi_v}{\rho_v}-\frac{\psi_l}{\rho_l}\right)\matD{p}  + \alpha_v\left(\frac{p}{\rho_v}\matD{\psi_v}-\frac{p}{\rho_l}\matD{\psi_l}\right) + \nabla\cdotp\bm{u}\right] \\
+& + \alpha_l\frac{\mathrm{Sp}}{\rho_l}\left(1+\alpha_l \left(\frac{\rho_l-\rho_v}{\rho_v}\right)\right)
++ \frac{\mathrm{Su}}{\rho_l}\left(1+\alpha_l \left(\frac{\rho_l-\rho_v}{\rho_v}\right)\right)
+\end{split}
+\end{equation}
+
+The compressibility and temperature effects,
+\begin{equation*}
+dgdt = \alpha_l\left[\alpha_v\left(\frac{\psi_v}{\rho_v}-\frac{\psi_l}{\rho_l}\right)\matD{p}  + \alpha_v\left(\frac{p}{\rho_v}\matD{\psi_v}-\frac{p}{\rho_l}\matD{\psi_l}\right)\right]
+\end{equation*}
+
+\section{Pressure Equation}
+
+The pressure equation is linked with the semi-descritised momentum equation and the complete pressure equation implemented in OpenFOAM is as follows:
+
+\begin{equation}
+\begin{split}
+	\frac{\alpha_l}{\rho_l}\left[\psi_l\frac{{\partial}p}{{\partial}t} + U \cdot(\rho_l)\right] + \frac{\alpha_v}{\rho_v}\left[\psi_v\frac{{\partial}p}{{\partial}t} + U \cdot(\rho_v)\right]: pEqnComp \\
+	+ \\
+	\nabla\left(\frac{H}{a_p}\right) - \nabla\left(\frac{1}{a_p}{\nabla}p\right) - \dot{m}\left(\frac{1}{\rho_l}-\frac{1}{\rho_v}\right): pEgnIncomp \\
+	= 0
+\end{split}
+\end{equation}
+
+\subsection{Energy Equation}
+
+The specific total energy of the mixture can be expressed as the sum of specific sensible enthalpy and kinetic energy:
+
+\begin{equation}
+\begin{split}
+\frac{\partial(\rho{h})}{\partial{t}} + \nabla\cdot(\rho{U}h)+\frac{\partial(\rho{K})}{\partial{t}} + \nabla\cdot(\rho{U}K)-\frac{\partial{p}}{\partial{t}} = \nabla\cdot(\tau \cdot U) - \nabla\cdot q
+\end{split}
+\end{equation}
+
+The term, $\nabla\cdot(\tau\cdot U)$, accounts for the shear stress in the flow. Replacing $-\nabla\cdot q$ with $\lambda({\nabla}^2 T)$ according to Fourier's law of heat conduction \cite{jasa96,yu18} gives:
+
+\begin{equation}
+\frac{\partial{\rho h}}{\partial{t}} + \nabla\cdot(\rho U h) + \frac{\partial{\rho K}}{\partial{t}} + \nabla\cdot(\rho U K) - \frac{\partial{p}}{\partial{t}} = \nabla\cdot(\tau\cdot U) + \lambda({\nabla}^2 T)
+\end{equation}
+
+As there is no chemical reactions occuring and no heat is directly transfered during phase change it is reasonable to assume thermal equilibrium which allows for a single continuous temperature field with a smooth gradient across the two phases. The energy equation for a single phase can be written as follows:
+
+\begin{equation}
+\begin{split}
+\frac{\partial(\alpha{_i}\rho{_i}h_i)}{\partial{t}} + \nabla\cdot(\alpha{_i}\rho{_i}h_i U) \\
+ + \frac{\partial(\alpha{_i}\rho{_i}K)}{\partial{t}} + \nabla\cdot(\alpha{_i}\rho{_i}U K) \\
+- \frac{\alpha{_i}\rho{_i}}{\rho}\left[\frac{\partial{p}}{\partial{t}} + \nabla\cdot(\tau\cdot U)\right] \\
+= \frac{\alpha{_i}\rho{_i}\lambda{_i}}{\rho}({\nabla}^2 T) + \dot{m}(h_i + \nabla H)
+\end{split}
+\end{equation}
+
+The added energy source term, $\dot{m}(h_i + \nabla H)$, added to the RHS of the phase energy equation comprises of the interfacial mass transfer rate $\dot{m}$, specific enthalpy $h_i$, of the liquid/vapour mass that takes part in the phase change process and enthalpy of phase change $\nabla H$ \cite{yu18}. The phase specific enthalpy can be expressed as the addition of a temperature dependant term and a pressure dependent term:
+
+\begin{equation}
+\partial{h_i} = C_{pi}\partial{T} + \left(\frac{\partial{h_i}}{\partial{p}}\right)_T \partial{p}
+\end{equation}
+
+The second term on the RHS is replaced with $\partial{H'_i}$.
+Adding the energy equations of each phase together and multiplying by $\frac{1}{\rho{_i}C_{pi}}$ the total energy equation with the consideration of vapourisation and condensation can be defined as:
+
+\begin{equation}
+\begin{split}
+\left[\frac{\partial{\rho T}}{\partial{t}}\right] - \left(\frac{\alpha{_l}\lambda{_l}}{C_{pl}} + \frac{\alpha{_v}\lambda{_v}}{C_{pv}}\right)\left({\nabla}^2 T\right) \\
++ \left(\frac{\alpha{_l}}{C_{pl}} + \frac{\alpha{_v}}{C_{pv}}\right)\left[\frac{\partial{\rho}K}{\partial{t}} + \nabla\cdot(\rho K U) - \frac{\partial{p}}{\partial{t}} - \nabla\cdot(\tau\cdot U)\right] \\
++ \left(\frac{\alpha{_l}}{C_{pl}}\right)\left[\frac{\partial{\rho}{H'_l}}{\partial{t}} + \nabla\cdot(\rho \partial{H'_l} U)\right] + \left(\frac{\alpha{_v}}{C_{pv}}\right)\left[\frac{\partial{\rho}{H'_v}}{\partial{t}} + \nabla\cdot(\rho \partial{H'_v} U)\right] \\
+= \dot{m}\rho\left[(\delta{H}-K)\left(\frac{1}{\rho C_{pl}}-\frac{1}{\rho C_{pv}}\right)\right]
+\end{split}
+\end{equation}
+
+The above derivation is currently being implemented into OpenFOAM. Up until now, the below equation, which is modified derivation of the energy equation implemented in Jan's code:
+
+\begin{equation}
+\begin{split}
+\rho\frac{DT}{Dt} + (\frac{\alpha_l}{C_{pl}} + \frac{\alpha_v}{C_{pv}})(\rho\frac{DK}{Dt}-\frac{{\partial}p}{{\partial}t}) \\
+- (\alpha_l\nabla\cdotp(\alpha_\mathrm{Eff,l}\nabla T) + \alpha_v\nabla\cdotp(\alpha_\mathrm{Eff,v}\nabla T)) \\
+= \rho h_l (\frac{\dot{m}_v}{\rho_v C_{pv}} - \frac{\dot{m}_l}{\rho_v C_{pv}}) + h_2 (\frac{\alpha_l \dot{m}_l}{C_{pl}} - \frac{\alpha_l \dot{m}_l}{C_{pl}})
+\end{split}
+\end{equation}
+
+$\alpha_\mathrm{Eff}$ is the turbulent thermal diffusivity defined as  $\alpha_\mathrm{Eff}= \frac{k}{c_p} + \frac{k_t}{c_p}$.
+
+In analogy to the HRM model the enthalpy of the vapor can be set to saturation conditions. However, a more consistent approach with the single temperature assumption would be to set the enthalpy of phase 2 to the value at the current pressure and temperature, thus $h_2 = f(p,T)$.
+
+\subsection{Phase Change}
+The term of the phase change of the volume fraction $\dot{m}_1$ is modeled in the phase change class which is dynamically selected at run time. Previously, only the homogeneous relaxation model (HRM) is implemented by Jans. The Schnerr-Sauer mass transfer cavitation model have been implemented into the code. The model, based on the Rayleigh-Plesset equation for bubble dynamics, relates the the expansion of a nucliated bubble radius with the pressure field gradient. The phase change is defined as a mass transfer source term.
+
+The well known Rayleigh-Plesset equation is as follows \cite{ples77}:
+
+\begin{equation}
+	\frac{d^2R_b}{dt^2} + \frac{3}{2}\left(\frac{dR_b}{dt}\right)^2 = \frac{P_{sat}-P}{\rho_1}
+\end{equation}
+
+which can be simplified to:
+
+\begin{equation}
+	\frac{dR_b}{dt} = -sign(P - P_{sat})\sqrt{\frac{3}{2}\frac{|P-P{sat}|}{\rho_{liq}}}
+\end{equation}
+
+Schnerr and Sauer related the vapour volume fraction with the number of bubbles within a volume of liquid using the following expression \cite{saue00}:
+
+\begin{equation}
+	\alpha_1 = \frac{n\frac{4}{3}\pi{R^3}_b}{1 + n\frac{4}{3}\pi{R^3}_b}
+\end{equation}
+
+The net mass source can be defined as:
+
+\begin{equation}
+	R = \frac{3\alpha(1-\alpha)}{R_b}\frac{\rho_1\rho_2}{\rho_m}\frac{dR_b}{dt}
+\end{equation}
+
+Bubble radius is assumed to be spherical and that the growth is an inertia controlled process, the simplified Rayleigh-Plesset equation can be used to account for the evolution rate of the bubble radius as follows in combination with the net mass source:
+
+\begin{equation}
+	P < P_{sat}(T) \to \dot{m}_{-} = \frac{3\alpha(1-\alpha)}{R_b}\frac{\rho_1\rho_2}{\rho_m}\sqrt{\frac{\frac{3}{2}(P_{sat}(T)-P)}{\rho_{liq}}
+\end{equation}
+
+\begin{equation}
+	P > P_{sat}(T) \to \dot{m}_{+} = \frac{3\alpha(1-\alpha)}{R_b}\frac{\rho_1\rho_2}{\rho_m}\sqrt{\frac{\frac{3}{2}(P-P_{sat}(T))}{\rho_{liq}}
+\end{equation}
+
+\nocite{mill13}
+
+\nocite{rayl17}
+
+\nocite{ubbi97}
+\nocite{bice15}
+
+\bibliographystyle{plain}
+\bibliography{lit} 
+\end{document}
