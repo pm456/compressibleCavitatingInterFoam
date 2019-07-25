@@ -1,0 +1,117 @@
+/*---------------------------------------------------------------------------*\
+  =========                 |
+  \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
+   \\    /   O peration     |
+    \\  /    A nd           | Copyright (C) 2011-2016 OpenFOAM Foundation
+     \\/     M anipulation  |
+-------------------------------------------------------------------------------
+License
+    This file is part of OpenFOAM.
+
+    OpenFOAM is free software: you can redistribute it and/or modify it
+    under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    OpenFOAM is distributed in the hope that it will be useful, but WITHOUT
+    ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+    FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+    for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with OpenFOAM.  If not, see <http://www.gnu.org/licenses/>.
+
+\*---------------------------------------------------------------------------*/
+
+#include "phaseChangeThreePhaseMixture.H"
+#include "addToRunTimeSelectionTable.H"
+#include "surfaceFields.H"
+#include "fvc.H"
+
+// * * * * * * * * * * * * * * Static Data Members * * * * * * * * * * * * * //
+
+namespace Foam
+{
+    defineTypeNameAndDebug(phaseChangeThreePhaseMixture, 0);
+    defineRunTimeSelectionTable(phaseChangeThreePhaseMixture, components);
+}
+
+// * * * * * * * * * * * * * * * * Constructors  * * * * * * * * * * * * * * //
+
+Foam::phaseChangeThreePhaseMixture::phaseChangeThreePhaseMixture
+(
+    const word& type,
+    const volVectorField& U,
+    const surfaceScalarField& phi
+)
+:
+    incompressibleThreePhaseMixture(U, phi),
+    phaseChangeThreePhaseMixtureCoeffs_(optionalSubDict(type + "Coeffs")),
+    pSat_("pSat", dimPressure, lookup("pSat"))
+{}
+
+
+// * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * * //
+
+Foam::Pair<Foam::tmp<Foam::volScalarField>>
+Foam::phaseChangeThreePhaseMixture::vDotAlphal() const
+{
+    volScalarField alphalCoeff(1.0/rho1() - alpha1_*(1.0/rho1() - 1.0/rho2()));
+    Pair<tmp<volScalarField>> mDotAlphal = this->mDotAlphal();
+
+    return Pair<tmp<volScalarField>>
+    (
+        alphalCoeff*mDotAlphal[0],
+        alphalCoeff*mDotAlphal[1]
+    );
+}
+
+Foam::Pair<Foam::tmp<Foam::volScalarField>>
+Foam::phaseChangeThreePhaseMixture::vDotAlphav() const
+{
+    volScalarField alphavCoeff(1.0/rho2() - alpha2_*(1.0/rho2() - 1.0/rho1()));
+    Pair<tmp<volScalarField>> mDotAlphal = this->mDotAlphal();
+
+    return Pair<tmp<volScalarField>>
+    (
+        alphavCoeff*mDotAlphal[0],
+        alphavCoeff*mDotAlphal[1]
+    );
+}
+
+Foam::Pair<Foam::tmp<Foam::volScalarField>>
+Foam::phaseChangeThreePhaseMixture::vDotP() const
+{
+    dimensionedScalar pCoeff(1.0/rho1() - 1.0/rho2());
+    Pair<tmp<volScalarField>> mDotP = this->mDotP();
+
+    return Pair<tmp<volScalarField>>(pCoeff*mDotP[0], pCoeff*mDotP[1]);
+}
+
+Foam::Pair<Foam::tmp<Foam::volScalarField>>
+Foam::phaseChangeThreePhaseMixture::vDotP2() const
+{
+    dimensionedScalar pCoeffv(1.0/rho2() - 1.0/rho1());
+    Pair<tmp<volScalarField>> mDotP = this->mDotP();
+
+    return Pair<tmp<volScalarField>>(pCoeffv*mDotP[0], pCoeffv*mDotP[1]);
+}
+
+
+bool Foam::phaseChangeThreePhaseMixture::read()
+{
+    if (incompressibleThreePhaseMixture::read())
+    {
+        phaseChangeThreePhaseMixtureCoeffs_ = optionalSubDict(type() + "Coeffs");
+        lookup("pSat") >> pSat_;
+
+        return true;
+    }
+    else
+    {
+        return false;
+    }
+}
+
+
+// ************************************************************************* //

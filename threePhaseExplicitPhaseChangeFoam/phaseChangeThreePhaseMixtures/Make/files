@@ -1,0 +1,5 @@
+phaseChangeThreePhaseMixture/phaseChangeThreePhaseMixture.C
+phaseChangeThreePhaseMixture/newPhaseChangeThreePhaseMixture.C
+SchnerrSauer/SchnerrSauer.C
+
+LIB = $(FOAM_LIBBIN)/libphaseChangeThreePhaseMixtures

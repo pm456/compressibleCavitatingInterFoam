@@ -1,0 +1,3 @@
+threePhaseExplicitPhaseChangeFoam.C
+
+EXE = $(FOAM_APPBIN)/threePhaseExplicitPhaseChangeFoam
