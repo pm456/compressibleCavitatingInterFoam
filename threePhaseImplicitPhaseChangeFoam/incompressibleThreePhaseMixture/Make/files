@@ -1,0 +1,3 @@
+incompressibleThreePhaseMixture.C
+
+LIB = $(FOAM_LIBBIN)/libincompressibleThreePhaseMixture

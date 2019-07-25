@@ -1,0 +1,16 @@
+EXE_INC = \
+    -I. \
+    -I../threePhaseMixture/lnInclude \
+    -I../incompressibleThreePhaseMixture/lnInclude \
+    -I$(LIB_SRC)/transportModels \
+    -I$(LIB_SRC)/transportModels/incompressible/lnInclude \
+    -I$(LIB_SRC)/finiteVolume/lnInclude \
+    -I$(LIB_SRC)/meshTools/lnInclude
+
+LIB_LIBS = \
+    -lthreePhaseMixture \
+    -lincompressibleThreePhaseMixture \
+    -ltwoPhaseProperties \
+    -lincompressibleTransportModels \
+    -lfiniteVolume \
+    -lmeshTools
